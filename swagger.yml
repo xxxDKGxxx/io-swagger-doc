@@ -1,0 +1,312 @@
+openapi: 3.0.3
+info:
+  title: DealMatcher API
+  version: 1.0.0
+servers:
+  - url: https://api.dealmatcher.com/v1
+tags:
+  - name: purchase-offer
+    description: Oferty kupna
+paths:
+  /purchase-offers:
+    post:
+      tags:
+        - purchase-offer
+      summary: Utwórz nową ofertę kupna (złożenie propozycji sprzedającemu)
+      description: >
+        Pozwala zalogowanemu kupującemu złożyć ofertę kupna konkretnego produktu sprzedającemu,
+        w celu wynegocjowania ceny.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOfferCreateRequest"
+      responses:
+        201:
+          description: Oferta kupna została pomyślnie utworzona.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOfferResponse"
+        400:
+          description: Błędne dane wejściowe.
+        401:
+          description: Użytkownik nie jest zalogowany.
+        404:
+          description: Nie znaleziono oferty
+
+    get:
+      tags:
+        - purchase-offer
+      summary: Pobierz listę ofert kupna
+      description: >
+        Pobiera listę ofert kupna do wyświetlenia w konwersacji. Z tego powodu filtruje po id oferty i id buyera. Dla sprzedawcy i dla kupującego
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offerId
+          in: query
+          description: Unikalny identyfikator oferty.
+          required: true
+          schema:
+            type: number
+        - name: buyerId
+          in: query
+          description: Unikalny identyfikator kupującego.
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Lista ofert kupna.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOfferListResponse"
+        "401":
+          description: Niezalogowany użytkownik
+        "403":
+          description: Próba dostępu do nie swoich zasobów
+        "404":
+          description: Nie znaleziono oferty lub kupującego
+
+  /purchase-offers/{offerId}:
+    get:
+      tags:
+        - purchase-offer
+      summary: Szczegóły oferty kupna
+      description: Pobiera wszystkie oferty kupna dla danego ogłoszenia. Tylko dla sprzedawcy
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Szczegóły oferty.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOfferListResponse"
+        "401":
+          description: Użytkownik niezalogowany
+        "403":
+          description: Dostęp nie do swojego zasobu - nie jako sprzedawca
+        "404":
+          description: Oferta nie znaleziona.
+  /purchase-offers/{purchaseOfferId}:
+    delete:
+      tags:
+        - purchase-offer
+      summary: Wycofaj/Anuluj ofertę kupna
+      description: >
+        Pozwala kupującemu zrezygnować z oferty w każdej chwili przed jej finalizacją.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: purchaseOfferId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: Oferta została wycofana (anulowana).
+        "401":
+          description: Użytkownik niezalogowany
+        "404":
+          description: Nie znaleziono oferty
+        "409":
+          description: Nie można wycofać oferty w obecnym statusie (np. już zakończona).
+  /purchase-offers/{purchaseOfferId}/counter:
+    post:
+      tags:
+        - purchase-offer
+      summary: Kontruj ofertę
+      description: >
+        Pozwala sprzedającemu skontrować ofertę kupującego. Zmienia status na countered
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: purchaseOfferId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOfferUpdateRequest"
+      responses:
+        "200":
+          description: "Oferta została skontrowana"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOfferResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Próba dostępu do nie swojego zasobu"
+        "409":
+          description: "Oferta jest już w statusie COUNTERED"
+        "404":
+          description: "Nie znaleziono oferty kupna"
+  /purchase-offers/{purchaseOfferId}/accept:
+    post:
+      tags:
+        - purchase-offer
+      summary: Zaakceptuj ofertę kupna
+      description: >
+        Pozwala sprzedającemu zaakceptować ofertę kupującego, lub kupującemu kontrę sprzedającego
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: purchaseOfferId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: "Oferta została zaakceptowana"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOfferResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Zabroniona akcja - np akceptacja własnej oferty przez kupującego, lub własnej kontry przez sprzedającego"
+        "409":
+          description: "Oferta jest w niepoprawnym statusie, np ACCEPTED lub REJECTED"
+        "404":
+          description: "Nie znaleziono oferty kupna"
+  /purchase-offers/{purchaseOfferId}/reject:
+    post:
+      tags:
+        - purchase-offer
+      summary: Odrzuć ofertę kupna
+      description: >
+        Pozwala sprzedającemu odrzucić ofertę kupującego, lub kupującemu kontrę sprzedającego
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: purchaseOfferId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: "Oferta została odrzucona"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOfferResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Zabroniona akcja - np odrzucenie własnej oferty przez kupującego, lub własnej kontry przez sprzedającego"
+        "409":
+          description: "Oferta jest w niepoprawnym statusie, np ACCEPTED lub REJECTED"
+        "404":
+          description: "Nie znaleziono oferty kupna"
+
+components:
+  schemas:
+    PurchaseOfferCreateRequest:
+      type: object
+      required:
+        - offerId
+        - offeredPrice
+      properties:
+        offerId:
+          type: number
+          description: ID produktu, którego dotyczy negocjacja.
+          example: 12
+        offeredPrice:
+          type: number
+          format: double
+          description: Proponowana cena zakupu (element negocjacji)
+          example: 150.00
+        message:
+          type: string
+          description: Wiadomość do sprzedającego ułatwiająca komunikację.
+          example: "Jestem zainteresowany, ale czy cena podlega negocjacji?"
+        validUntil:
+          type: string
+          format: date-time
+          description: Czas ważności oferty (istotne dla "czas trwania" w wymaganiach niefunkcjonalnych).
+
+    PurchaseOfferUpdateRequest:
+      type: object
+      properties:
+        offeredPrice:
+          type: number
+          format: double
+          description: Nowa proponowana cena.
+        message:
+          type: string
+          description: Aktualizacja wiadomości do sprzedającego.
+
+    PurchaseOfferListResponse:
+      type: array
+      items:
+        $ref: "#components/schemas/PurchaseOfferResponse"
+
+    PurchaseOfferResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Unikalny identyfikator oferty.
+        offerId:
+          type: number
+        offerName:
+          type: string
+          description: Nazwa produktu (dla czytelności w interfejsie).
+        buyerId:
+          type: number
+          description: ID użytkownika składającego ofertę.
+        sellerId:
+          type: number
+        offeredPrice:
+          type: number
+          format: double
+        originalPrice:
+          type: number
+          format: double
+          description: Cena pierwotna z ogłoszenia (do porównania).
+        message:
+          type: string
+        status:
+          type: string
+          description: >
+            Aktualny status oferty.
+          enum: [PENDING, ACCEPTED, REJECTED, COUNTERED, CANCELLED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+          description: Data wygaśnięcia oferty.
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
