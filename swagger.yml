@@ -7,6 +7,8 @@ servers:
 tags:
   - name: purchase-offer
     description: Oferty kupna
+  - name: cart
+    description: Koszyk
 paths:
   /purchase-offers:
     post:
@@ -221,6 +223,133 @@ paths:
           description: "Oferta jest w niepoprawnym statusie, np ACCEPTED lub REJECTED"
         "404":
           description: "Nie znaleziono oferty kupna"
+  /cart:
+    post:
+      tags:
+        - cart
+      summary: Dodaj nową ofertę do koszyka
+      description: Pozwala dodać użytkownikowi ofertę do swojego koszyka.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartAddOfferRequest"
+      responses:
+        "201":
+          description: "Dodano ofertę do koszyka"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartOfferResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik dodaje ofertę do nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono oferty"
+        "409":
+          description: "Oferta znajduje się już w koszyku"
+    get:
+      tags:
+        - cart
+      summary: "Zwróć listę ofert w koszyku użytkownika"
+      description: "Zwraca listę wszystkich ofert o unikalnym identyfikatorze oraz ich liczebności"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "Zwrócono listę ofert w koszyku"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartOfferResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik chce pobrać oferty z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono koszyka bądź użytkownika"
+  /cart/total-price:
+    get:
+      tags:
+        - cart
+      summary: "Zwróć sumaryczną cenę ofert z koszyka"
+      description: "Oblicza sumę cen wszystkich ofert występujących w koszyku i ją zwraca w odpowiedzi"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "Zwrócono cenę wszystkich ofert z koszyka"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartTotalPriceResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik chce pobrać cenę ofert z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono koszyka bądź użytkownika"
+  /cart/{offerInCartId}/change-count/{count}:
+    post:
+      tags:
+        - cart
+      summary: Zmień liczbę tych samych ofert w koszyku
+      description: Pozwala zmienić liczbę ofert o tym samym identyfikatorze istniejących w koszyku.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offerInCartId
+          in: path
+          required: true
+          schema:
+            type: number
+        - name: count
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "201":
+          description: "Zmieniono liczbę tych samych ofert w koszyku"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartOfferResponse"
+        "400":
+          description: "Podana liczba count jest spoza dopuszczalnego zakresu"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik zmienia ofertę z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono oferty"
+  /cart/{offerInCartId}:
+    delete:
+      tags:
+        - cart
+      summary: Usuwa ofertę z koszyka
+      description: Na podstawie identyfikatora oferty w koszyku usuwa jego rekord z bazy danych
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offerInCartId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: "Usunięto ofertę z koszyka"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik chce usunąć ofertę z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono oferty w koszyku"
 
 components:
   schemas:
@@ -304,6 +433,53 @@ components:
           type: string
           format: date-time
           description: Data wygaśnięcia oferty.
+
+    CartAddOfferRequest:
+      type: object
+      properties:
+        offerId:
+          type: number
+          description: Unikalny identyfikator oferty.
+        count:
+          type: number
+          description: Liczba tych samych ofert do dodania do koszyka.
+
+    CartOfferResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Unikalny identyfikator unikalnej oferty w koszyku.
+        offerId:
+          type: number
+        count:
+          type: number
+          description: Liczba ofert w koszyku o tym samym identyfikatorze.
+        userId:
+          type: number
+          description: Unikalny identyfikator użytkownika składającego ofertę z koszyka.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+          description: Data wygaśnięcia oferty.
+
+    CartOfferListResponse:
+      type: array
+      items:
+        $ref: "#components/schemas/CartOfferResponse"
+
+    CartTotalPriceResponse:
+      type: object
+      properties:
+        totalPrice:
+          type: number
+          description: Sumaryczna cena wszystkich ofert z koszyka
 
   securitySchemes:
     bearerAuth:
