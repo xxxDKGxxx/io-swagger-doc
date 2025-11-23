@@ -110,8 +110,6 @@ paths:
                 $ref: "#/components/schemas/OfferResponse"
         401:
           description: Użytkownik nie jest zalogowany
-        403:
-          description: Użytkownik jest zbanowany
   /offers/{offerId}:
     get:
       tags:
@@ -287,8 +285,8 @@ paths:
       responses:
         303:
           description: Przekierowanie do dostawcy płatności
-        403:
-          description: Użytkownik zbanowany
+        "404":
+          description: Nie znaleziono oferty o podanym id
         409:
           description: Oferta nie jest aktywna do sprzedaży
   /offers/{offerId}/conversations:
@@ -798,8 +796,6 @@ paths:
           description: Brak ofert u usera
         401:
           description: Użytkownik niezalogowany
-        403:
-          description: Użytkownik zbanowany
 components:
   schemas:
     PurchaseOfferCreateRequest:
