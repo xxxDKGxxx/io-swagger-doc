@@ -39,6 +39,7 @@ paths:
         Umożliwia pobranie wszystkich właściwości danej kategorii
       parameters:
         - name: categoryName
+          required: true
           in: path
           schema:
             type: string
@@ -201,6 +202,7 @@ paths:
         Pozwala zmienić status oferty na ACTIVE (Adminowi), PROMOTED (Userowi) lub SOLD (Userowi)
       parameters:
         - name: offerId
+          required: true
           in: path
           schema:
             type: number
@@ -236,6 +238,7 @@ paths:
       description: Pozwala sprzedawcy pobrać wszystkie oferty kupna jego oferty
       parameters:
         - name: offerId
+          required: true
           in: path
           schema:
             type: number
@@ -265,6 +268,7 @@ paths:
         Pozwala utworzyć nowy zakup do danej oferty. Przekierowuje do płatności
       parameters:
         - name: offerId
+          required: true
           in: path
           schema:
             type: number
@@ -292,7 +296,9 @@ paths:
       tags:
         - offer
       summary: Niech ktoś kto robi konfy to zrobi
-
+      responses:
+        200:
+          description: "OK"
   /purchase-offers:
     post:
       tags:
@@ -462,7 +468,7 @@ paths:
           schema:
             type: number
       requestBody:
-        required: true.
+        required: true
         content:
           application/json:
             schema:
@@ -1102,7 +1108,7 @@ components:
           enum: [INTERNAL, EXTERNAL]
         providerUrl:
           type: string
-          required: false
+          description: Opcjonalne
         imageUrls:
           type: array
           items:
