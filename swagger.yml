@@ -11,7 +11,68 @@ tags:
     description: Koszyk
   - name: user
     description: Użytkownik
+  - name: offer
+    description: Oferty wystawione w aplikacji
 paths:
+  /offers/search:
+    post:
+      tags:
+        - offer
+      summary: Utwórz obiekt wyszukiwania ofert kupna
+      description: >
+        Pozwala utworzyć zapytanie wyszukiwania ofert kupna, gotowych do swipowania.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#components/schemas/OfferSearchCreateRequest"
+      responses:
+        201:
+          description: Wynik zapytania został pomyślnie utworzony
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    offers:
+                      $ref: "#/components/schemas/OfferResponse"
+                    adUrls:
+                      type: array
+                      items:
+                        type: string
+        204:
+          description: Nie znaleziono żadnych ofert
+        400:
+          description: Błąd w podanych filtrach - niepoprawna kategoria lub niepoprawne property
+        403:
+          description: Próba pominięcia ofert promowanych niebędąc userem premium
+  /offers:
+    post:
+      tags:
+        - offer
+      summary: Utwórz nową ofertę
+      description: >
+        Pozwala utworzyć nową ofertę w systemie, oferta jest utworzona ze statusem DRAFT, dopóki nie przejdzie walidacji
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferCreateRequest"
+      responses:
+        201:
+          description: Udało się utworzyć ofertę
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferResponse"
+        401:
+          description: Użytkownik nie jest zalogowany
+        403:
+          description: Użytkownik jest zbanowany
+
   /purchase-offers:
     post:
       tags:
@@ -77,34 +138,35 @@ paths:
         "404":
           description: Nie znaleziono oferty lub kupującego
 
-  /purchase-offers/{offerId}:
-    get:
-      tags:
-        - purchase-offer
-      summary: Szczegóły oferty kupna
-      description: Pobiera wszystkie oferty kupna dla danego ogłoszenia. Tylko dla sprzedawcy
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: offerId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "200":
-          description: Szczegóły oferty.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PurchaseOfferListResponse"
-        "401":
-          description: Użytkownik niezalogowany
-        "403":
-          description: Dostęp nie do swojego zasobu - nie jako sprzedawca
-        "404":
-          description: Oferta nie znaleziona.
+  # /purchase-offers/{offerId}:
+  #   get:
+  #     tags:
+  #       - purchase-offer
+  #     summary: Szczegóły oferty kupna
+  #     description: Pobiera wszystkie oferty kupna dla danego ogłoszenia. Tylko dla sprzedawcy
+  #     security:
+  #       - bearerAuth: []
+  #     parameters:
+  #       - name: offerId
+  #         in: path
+  #         required: true
+  #         schema:
+  #           type: string
+  #           format: uuid
+  #     responses:
+  #       "200":
+  #         description: Szczegóły oferty.
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/PurchaseOfferListResponse"
+  #       "401":
+  #         description: Użytkownik niezalogowany
+  #       "403":
+  #         description: Dostęp nie do swojego zasobu - nie jako sprzedawca
+  #       "404":
+  #         description: Oferta nie znaleziona.
+
   /purchase-offers/{purchaseOfferId}:
     delete:
       tags:
@@ -129,8 +191,7 @@ paths:
           description: Nie znaleziono oferty
         "409":
           description: Nie można wycofać oferty w obecnym statusie (np. już zakończona).
-  /purchase-offers/{purchaseOfferId}/counter:
-    post:
+    patch:
       tags:
         - purchase-offer
       summary: Kontruj ofertę
@@ -165,13 +226,13 @@ paths:
           description: "Oferta jest już w statusie COUNTERED"
         "404":
           description: "Nie znaleziono oferty kupna"
-  /purchase-offers/{purchaseOfferId}/accept:
-    post:
+  /purchase-offers/{purchaseOfferId}/status:
+    put:
       tags:
         - purchase-offer
-      summary: Zaakceptuj ofertę kupna
+      summary: Zaakceptuj lub odrzuć ofertę kupna
       description: >
-        Pozwala sprzedającemu zaakceptować ofertę kupującego, lub kupującemu kontrę sprzedającego
+        Pozwala sprzedającemu zaakceptować/odrzucić ofertę kupującego, lub kupującemu kontrę sprzedającego
       security:
         - bearerAuth: []
       parameters:
@@ -180,6 +241,13 @@ paths:
           required: true
           schema:
             type: number
+      requestBody:
+        required: true.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseOfferChangeStatusRequest"
+
       responses:
         "200":
           description: "Oferta została zaakceptowana"
@@ -191,36 +259,6 @@ paths:
           description: "Użytkownik niezalogowany"
         "403":
           description: "Zabroniona akcja - np akceptacja własnej oferty przez kupującego, lub własnej kontry przez sprzedającego"
-        "409":
-          description: "Oferta jest w niepoprawnym statusie, np ACCEPTED lub REJECTED"
-        "404":
-          description: "Nie znaleziono oferty kupna"
-  /purchase-offers/{purchaseOfferId}/reject:
-    post:
-      tags:
-        - purchase-offer
-      summary: Odrzuć ofertę kupna
-      description: >
-        Pozwala sprzedającemu odrzucić ofertę kupującego, lub kupującemu kontrę sprzedającego
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: purchaseOfferId
-          in: path
-          required: true
-          schema:
-            type: number
-      responses:
-        "200":
-          description: "Oferta została odrzucona"
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/PurchaseOfferResponse"
-        "401":
-          description: "Użytkownik niezalogowany"
-        "403":
-          description: "Zabroniona akcja - np odrzucenie własnej oferty przez kupującego, lub własnej kontry przez sprzedającego"
         "409":
           description: "Oferta jest w niepoprawnym statusie, np ACCEPTED lub REJECTED"
         "404":
@@ -553,13 +591,19 @@ components:
       type: array
       items:
         $ref: "#components/schemas/PurchaseOfferResponse"
+    PurchaseOfferChangeStatusRequest:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ACCEPTED, REJECTED]
 
     PurchaseOfferResponse:
       type: object
       properties:
         id:
           type: number
-          description: Unikalny identyfikator oferty.
+          description: Unikalny identyfikator oferty kupna.
         offerId:
           type: number
         offerName:
@@ -719,6 +763,102 @@ components:
           type: string
           format: date-time
           description: Data, kiedy poddano email weryfikacji
+    OfferSearchCreateRequest:
+      type: object
+      properties:
+        filters:
+          type: array
+          items:
+            type: object
+            properties:
+              categoryName:
+                type: string
+              propertyFilters:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    propertyType:
+                      type: string
+                      enum: [NUMERIC, BOOLEAN]
+                    propertyName:
+                      type: string
+                    minValue:
+                      type: number
+                    maxValue:
+                      type: number
+                    isTrue:
+                      type: boolean
+        searchPhrase:
+          type: string
+        skipPromoted:
+          type: boolean
+    PropertyResponse:
+      type: object
+      properties:
+        propertyName:
+          type: string
+        propertyType:
+          type: string
+          enum: [NUMERIC, BOOLEAN]
+
+    CategoryResponse:
+      type: object
+      properties:
+        categoryName:
+          type: string
+        properties:
+          type: array
+          items:
+            $ref: "#/components/schemas/PropertyResponse"
+
+    OfferResponse:
+      type: object
+      properties:
+        imageUrls:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        price:
+          type: number
+        postedBy:
+          type: object
+          properties:
+            name:
+              type: string
+            surname:
+              type: string
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryResponse"
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, PROMOTED, DELETED]
+        createdAt:
+          type: string
+          format: date-time
+        modifiedAt:
+          type: string
+          format: date-time
+    OfferCreateRequest:
+      type: object
+      properties:
+        imageUrls:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        price:
+          type: number
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryResponse"
+
   securitySchemes:
     bearerAuth:
       type: http
