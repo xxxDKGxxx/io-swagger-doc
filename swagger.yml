@@ -13,7 +13,44 @@ tags:
     description: Użytkownik
   - name: offer
     description: Oferty wystawione w aplikacji
+  - name: category
+    description: Kategorie oferty i ich właściwości
 paths:
+  /categories:
+    get:
+      tags:
+        - category
+      summary: Pobierz wszystkie dostępne kategorie
+      description: >
+        Umożliwia pobranie wszystkich dostępnych kategorii w systemie
+      responses:
+        200:
+          description: Udało się pobrać wszystkie kategorie
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CategoryResponse"
+  /categories/{categoryName}/properties:
+    get:
+      tags:
+        - category
+      summary: Pobierz właściwości danej kategorii
+      description: >
+        Umożliwia pobranie wszystkich właściwości danej kategorii
+      parameters:
+        - name: categoryName
+          in: path
+          schema:
+            type: string
+      responses:
+        200:
+          description: Udało się pobrać właściwości
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PropertyResponse"
   /offers/search:
     post:
       tags:
@@ -56,6 +93,8 @@ paths:
       summary: Utwórz nową ofertę
       description: >
         Pozwala utworzyć nową ofertę w systemie, oferta jest utworzona ze statusem DRAFT, dopóki nie przejdzie walidacji
+      security:
+        - bearerAuth: []
       requestBody:
         content:
           application/json:
@@ -72,6 +111,187 @@ paths:
           description: Użytkownik nie jest zalogowany
         403:
           description: Użytkownik jest zbanowany
+  /offers/{offerId}:
+    get:
+      tags:
+        - offer
+      summary: Pobierz szczegóły oferty
+      description: >
+        Pozwala pobrać szczegóły konkretnej oferty
+      parameters:
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Udało się pobrać ofertę
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferResponse"
+        403:
+          description: Próba pobrania nieaktywnej oferty, jeśli niezalogowany
+        404:
+          description: Nie znaleziono oferty
+    patch:
+      tags:
+        - offer
+      summary: Zmodyfikuj ofertę
+      description: >
+        Pozwala zmodyfikować istniejącą ofertę. Zmienia jej status na draft do walidacji
+      parameters:
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: number
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OfferUpdateRequest"
+      responses:
+        200:
+          description: Udało się zmodyfikować ofertę
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferResponse"
+        401:
+          description: Niezalogowany użytkownik
+        403:
+          description: Próba modyfikacji nieswojej oferty
+        404:
+          description: Nie znaleziono oferty
+        409:
+          description: Oferta od zewnętrznego dostawcy
+    delete:
+      tags:
+        - offer
+      summary: Usuń ofertę
+      description: >
+        Umożliwia sprzedawcy i adminowi usunięcie oferty z systemu (soft delete)
+      parameters:
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: number
+      security:
+        - bearerAuth: []
+      responses:
+        204:
+          description: Udało się skasować oferte
+        401:
+          description: Niezalogowany user
+        403:
+          description: Próba usunięcia zasobu, do którego się nie ma dostępu
+        409:
+          description: Oferta już usunięta
+  /offers/{offerId}/status:
+    put:
+      tags:
+        - offer
+      summary: Zmień status oferty
+      description: >
+        Pozwala zmienić status oferty na ACTIVE (Adminowi), PROMOTED (Userowi) lub SOLD (Userowi)
+      parameters:
+        - name: offerId
+          in: path
+          schema:
+            type: number
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, PROMOTED, SOLD]
+      responses:
+        200:
+          description: Zmieniono status oferty
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OfferResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba modyfikacji nieswojego zasobu, próba walidacji swojej własnej oferty
+        404:
+          description: Nie znaleziono takiej oferty
+  /offers/{offerId}/purchaseOffers:
+    get:
+      tags:
+        - offer
+      summary: Pobierz oferty kupna danej oferty
+      description: Pozwala sprzedawcy pobrać wszystkie oferty kupna jego oferty
+      parameters:
+        - name: offerId
+          in: path
+          schema:
+            type: number
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Pobrano oferty kupna
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PurchaseOfferResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba dostępu do nieswojego zasobu
+        404:
+          description: Nie znaleziono oferty o podanym id
+  /offers/{offerId}/purchase:
+    post:
+      tags:
+        - offer
+      summary: Utwórz nowy zakup
+      description: >
+        Pozwala utworzyć nowy zakup do danej oferty. Przekierowuje do płatności
+      parameters:
+        - name: offerId
+          in: path
+          schema:
+            type: number
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paymentType:
+                  type: string
+                deliveryType:
+                  type: string
+      security:
+        - bearerAuth: []
+      responses:
+        303:
+          description: Przekierowanie do dostawcy płatności
+        403:
+          description: Użytkownik zbanowany
+        409:
+          description: Oferta nie jest aktywna do sprzedaży
+  /offers/{offerId}/conversations:
+    get:
+      tags:
+        - offer
+      summary: Niech ktoś kto robi konfy to zrobi
 
   /purchase-offers:
     post:
@@ -550,6 +770,30 @@ paths:
           description: "Nie znaleziono użytkownika o podanym identyfikatorze w bazie"
         "409":
           description: "Użytkownik został już zbanowany"
+  /users/me/offers:
+    get:
+      tags:
+        - user
+      summary: Pobierz wystawione przeze mnie oferty
+      description: >
+        Umożliwia pobranie wystawionych przez usera tokena (identity z tokena)
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Udało się pobrać oferty usera
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#components/schemas/OfferResponse"
+        204:
+          description: Brak ofert u usera
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Użytkownik zbanowany
 components:
   schemas:
     PurchaseOfferCreateRequest:
@@ -815,6 +1059,13 @@ components:
     OfferResponse:
       type: object
       properties:
+        offerId:
+          type: number
+        providerType:
+          type: string
+          enum: [INTERNAL, EXTERNAL]
+        providerUrl:
+          type: string
         imageUrls:
           type: array
           items:
@@ -836,7 +1087,7 @@ components:
             $ref: "#/components/schemas/CategoryResponse"
         status:
           type: string
-          enum: [DRAFT, ACTIVE, PROMOTED, DELETED]
+          enum: [DRAFT, ACTIVE, PROMOTED, DELETED, SOLD]
         createdAt:
           type: string
           format: date-time
@@ -844,6 +1095,27 @@ components:
           type: string
           format: date-time
     OfferCreateRequest:
+      type: object
+      properties:
+        providerType:
+          type: string
+          enum: [INTERNAL, EXTERNAL]
+        providerUrl:
+          type: string
+          required: false
+        imageUrls:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        price:
+          type: number
+        categories:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryResponse"
+    OfferUpdateRequest:
       type: object
       properties:
         imageUrls:
