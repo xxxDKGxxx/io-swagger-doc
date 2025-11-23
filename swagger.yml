@@ -7,6 +7,10 @@ servers:
 tags:
   - name: purchase-offer
     description: Oferty kupna
+  - name: cart
+    description: Koszyk
+  - name: user
+    description: Użytkownik
 paths:
   /purchase-offers:
     post:
@@ -221,7 +225,293 @@ paths:
           description: "Oferta jest w niepoprawnym statusie, np ACCEPTED lub REJECTED"
         "404":
           description: "Nie znaleziono oferty kupna"
-
+  /cart:
+    post:
+      tags:
+        - cart
+      summary: Dodaj nową ofertę do koszyka
+      description: Pozwala dodać użytkownikowi ofertę do swojego koszyka.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartAddOfferRequest"
+      responses:
+        "201":
+          description: "Dodano ofertę do koszyka"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartOfferResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik dodaje ofertę do nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono oferty"
+        "409":
+          description: "Oferta znajduje się już w koszyku"
+    get:
+      tags:
+        - cart
+      summary: "Zwróć listę ofert w koszyku użytkownika"
+      description: "Zwraca listę wszystkich ofert o unikalnym identyfikatorze oraz ich liczebności"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "Zwrócono listę ofert w koszyku"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartOfferResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik chce pobrać oferty z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono koszyka bądź użytkownika"
+  /cart/total-price:
+    get:
+      tags:
+        - cart
+      summary: "Zwróć sumaryczną cenę ofert z koszyka"
+      description: "Oblicza sumę cen wszystkich ofert występujących w koszyku i ją zwraca w odpowiedzi"
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "Zwrócono cenę wszystkich ofert z koszyka"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartTotalPriceResponse"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik chce pobrać cenę ofert z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono koszyka bądź użytkownika"
+  /cart/{offerInCartId}/change-count/{count}:
+    post:
+      tags:
+        - cart
+      summary: Zmień liczbę tych samych ofert w koszyku
+      description: Pozwala zmienić liczbę ofert o tym samym identyfikatorze istniejących w koszyku.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offerInCartId
+          in: path
+          required: true
+          schema:
+            type: number
+        - name: count
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "201":
+          description: "Zmieniono liczbę tych samych ofert w koszyku"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartOfferResponse"
+        "400":
+          description: "Podana liczba count jest spoza dopuszczalnego zakresu"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik zmienia ofertę z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono oferty"
+  /cart/{offerInCartId}:
+    delete:
+      tags:
+        - cart
+      summary: Usuwa ofertę z koszyka
+      description: Na podstawie identyfikatora oferty w koszyku usuwa jego rekord z bazy danych
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offerInCartId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: "Usunięto ofertę z koszyka"
+        "401":
+          description: "Użytkownik niezalogowany"
+        "403":
+          description: "Użytkownik chce usunąć ofertę z nie swojego koszyka"
+        "404":
+          description: "Nie znaleziono oferty w koszyku"
+  /user/register:
+    post:
+      tags:
+        - user
+      summary: Zarejestruj użytkownika
+      description: Sprawdza, czy podany email znajduje się w bazie użytkowników, jeśli nie dodaje go do bazy danych razem z pozostałymi, jeżeli zostały poprawnie zwalidowane. Ustawia stan użytkownika na nieaktywny.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegisterRequest"
+      responses:
+        "201":
+          description: "Pomyślnie zarejestrowano użytkownika"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "403":
+          description: "Email użytkownika występuje w bazie danych"
+        "409":
+          description: "Wprowadzono niepoprawne dane do rejestracji"
+  /user/login:
+    get:
+      tags:
+        - user
+      summary: Zaloguj użytkownika
+      description: Ocenia, czy dane logowania są poprawne oraz czy użytkownik nie jest zbanowany. Jeśli tak, przyznaje mu w sesji token JWT.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLoginRequest"
+      responses:
+        "200":
+          description: "Pomyślnie zalogowano użytkownika"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserLoginResponse"
+        "403":
+          description: "Użytkownik został zbanowany"
+        "409":
+          description: "Wprowadzono niepoprawne dane logowania"
+  /user/logout:
+    get:
+      tags:
+        - user
+      summary: Wyloguj użytkownika
+      description: Usuwa token JWT z sesji użytkownika.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: "Pomyślnie zalogowano użytkownika"
+        "403":
+          description: "Użytkownik nie jest zalogowany"
+        "409":
+          description: "Użytkownik został już wylogowany"
+  /user/verify:
+    post:
+      tags:
+        - user
+      summary: Zweryfikuj email użytkownika
+      description: Po poprawnym zweryfikowaniu emaila ustawia jego stan na aktywny.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserVerifyRequest"
+      responses:
+        "201":
+          description: "Pomyślnie wylogowano użytkownika"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "403":
+          description: "Użytkownik nie jest zalogowany"
+        "404":
+          description: "Nie znaleziono emaila w bazie"
+        "409":
+          description: "Email użytkownika został już zweryfikowany"
+  /user/{userId}:
+    get:
+      tags:
+        - user
+      summary: Pobierz szczegóły użytkownika
+      description: Otrzymuje wszystkie informacje o danym użytkowniku. Tylko dla administratora.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: "Zbanowano użytkownika"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "403":
+          description: "Użytkownik nie jest administratorem"
+        "404":
+          description: "Nie znaleziono użytkownika o podanym identyfikatorze w bazie"
+    delete:
+      tags:
+        - user
+      summary: Usuń użytkownika
+      description: Usuwa użytkownika z bazy danych wraz z wrażliwymi danymi. Tylko dla administratora.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "204":
+          description: "Usunięto użytkownika"
+        "403":
+          description: "Użytkownik nie jest administratorem"
+        "404":
+          description: "Nie znaleziono użytkownika o podanym identyfikatorze w bazie"
+  /user/{userId}/ban:
+    post:
+      tags:
+        - user
+      summary: Nadaj użytkownikowi ban
+      description: Ustawia stan użytkownika na zbanowanego. Tylko dla administratora.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "201":
+          description: "Zbanowano użytkownika"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "403":
+          description: "Użytkownik nie jest administratorem"
+        "404":
+          description: "Nie znaleziono użytkownika o podanym identyfikatorze w bazie"
+        "409":
+          description: "Użytkownik został już zbanowany"
 components:
   schemas:
     PurchaseOfferCreateRequest:
@@ -305,6 +595,130 @@ components:
           format: date-time
           description: Data wygaśnięcia oferty.
 
+    CartAddOfferRequest:
+      type: object
+      properties:
+        offerId:
+          type: number
+          description: Unikalny identyfikator oferty.
+        count:
+          type: number
+          description: Liczba tych samych ofert do dodania do koszyka.
+
+    CartOfferResponse:
+      type: object
+      properties:
+        id:
+          type: number
+          description: Unikalny identyfikator unikalnej oferty w koszyku.
+        offerId:
+          type: number
+        count:
+          type: number
+          description: Liczba ofert w koszyku o tym samym identyfikatorze.
+        userId:
+          type: number
+          description: Unikalny identyfikator użytkownika składającego ofertę z koszyka.
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        validUntil:
+          type: string
+          format: date-time
+          description: Data wygaśnięcia oferty.
+
+    CartOfferListResponse:
+      type: array
+      items:
+        $ref: "#components/schemas/CartOfferResponse"
+
+    CartTotalPriceResponse:
+      type: object
+      properties:
+        totalPrice:
+          type: number
+          description: Sumaryczna cena wszystkich ofert z koszyka
+
+    UserRegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          description: Email użytkownika
+        password:
+          type: string
+          description: Hasło
+        name:
+          type: string
+          description: Imię
+        surname:
+          type: string
+          description: Nazwisko
+        birth_date:
+          type: string
+          format: date-time
+          description: Data urodzenia
+
+    UserResponse:
+      type: object
+      properties:
+        userId:
+          type: number
+          description: Unikalny identyfikator użytkownika
+        email:
+          type: string
+          description: Email użytkownika
+        password:
+          type: string
+          description: Zakodowane hasło
+        name:
+          type: string
+          description: Imię
+        surname:
+          type: string
+          description: Nazwisko
+        birth_date:
+          type: string
+          format: date-time
+          description: Data urodzenia
+        status:
+          type: string
+          description: Status zarejestrowanego użytkownika
+          enum: [INACTIVE, ACTIVE, BANNED]
+
+    UserLoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          description: Email użytkownika
+        password:
+          type: string
+          description: Zakodowane hasło
+
+    UserLoginResponse:
+      type: object
+      properties:
+        tokenJWT:
+          type: string
+          description: Token JWT używany do autoryzacji kolejnych żądań
+        expires_in:
+          type: number
+          description: Data wygaśnięcia tokena w sesji
+
+    UserVerifyRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          description: Email użytkownika
+        verify_at:
+          type: string
+          format: date-time
+          description: Data, kiedy poddano email weryfikacji
   securitySchemes:
     bearerAuth:
       type: http
