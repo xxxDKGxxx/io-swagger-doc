@@ -116,6 +116,7 @@ paths:
       security:
         - bearerAuth: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -168,6 +169,7 @@ paths:
       security:
         - bearerAuth: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -226,6 +228,7 @@ paths:
       security:
         - bearerAuth: []
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -290,6 +293,7 @@ paths:
           schema:
             type: number
       requestBody:
+        required: true
         content:
           application/json:
             schema:
@@ -2240,6 +2244,8 @@ components:
           type: string
         skipPromoted:
           type: boolean
+        limit:
+          type: number
     PropertyResponse:
       type: object
       properties:
