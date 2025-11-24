@@ -532,7 +532,7 @@ paths:
           description: "Użytkownik niezalogowany"
         "404":
           description: "Nie znaleziono koszyka bądź użytkownika"
-  /cart/total-price:
+  /carts/total-price:
     get:
       tags:
         - cart
@@ -549,7 +549,7 @@ paths:
                 $ref: "#/components/schemas/CartTotalPriceResponse"
         "401":
           description: "Użytkownik niezalogowany"
-  /cart/items/{offerInCartId}/count:
+  /carts/items/{offerInCartId}/count:
     patch:
       tags:
         - cart
@@ -581,7 +581,7 @@ paths:
           description: "Nie znaleziono oferty"
         "409":
           description: "Podana liczba count jest spoza dopuszczalnego zakresu"
-  /cart/items/{offerInCartId}/delete:
+  /carts/items/{offerInCartId}/delete:
     delete:
       tags:
         - cart
@@ -625,7 +625,7 @@ paths:
           description: "Email użytkownika występuje w bazie danych"
         "409":
           description: "Wprowadzono niepoprawne dane do rejestracji"
-  /user/login:
+  /tokens:
     get:
       tags:
         - user
@@ -648,7 +648,7 @@ paths:
           description: "Użytkownik został zbanowany"
         "409":
           description: "Wprowadzono niepoprawne dane logowania"
-  /user/email/verify:
+  /users/email/verify:
     post:
       tags:
         - user
@@ -669,7 +669,7 @@ paths:
           description: "Znaleziono email w bazie"
         "409":
           description: "Wprowadzono niepoprawny email"
-  /user/password/verify:
+  /users/password/verify:
     post:
       tags:
         - user
@@ -688,7 +688,7 @@ paths:
           description: "Pomyślnie zweryfikowano hasło użytkownika"
         "409":
           description: "Wprowadzono niepoprawne hasło"
-  /user/{userId}:
+  /users/{userId}:
     get:
       tags:
         - user
