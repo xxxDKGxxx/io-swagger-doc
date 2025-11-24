@@ -15,6 +15,12 @@ tags:
     description: Oferty wystawione w aplikacji
   - name: category
     description: Kategorie oferty i ich właściwości
+  - name: wishlist
+    description: Listy życzeń użytkownika
+  - name: conversation
+    description: Konwersacje między kupującym a sprzedającym
+  - name: message
+    description: Wiadomości w konwersacjach
 paths:
   /categories:
     get:
@@ -289,14 +295,6 @@ paths:
           description: Nie znaleziono oferty o podanym id
         409:
           description: Oferta nie jest aktywna do sprzedaży
-  /offers/{offerId}/conversations:
-    get:
-      tags:
-        - offer
-      summary: Niech ktoś kto robi konfy to zrobi
-      responses:
-        200:
-          description: "OK"
   /purchase-offers:
     post:
       tags:
@@ -796,6 +794,457 @@ paths:
           description: Brak ofert u usera
         401:
           description: Użytkownik niezalogowany
+  /wishlists:
+    get:
+      tags:
+        - wishlist
+      summary: Pobierz wszystkie listy życzeń użytkownika
+      description: Zwraca wszystkie listy życzeń zalogowanego użytkownika
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Udało się pobrać listy życzeń
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WishlistResponse"
+        401:
+          description: Użytkownik niezalogowany
+    post:
+      tags:
+        - wishlist
+      summary: Utwórz nową listę życzeń
+      description: Pozwala użytkownikowi utworzyć nową listę życzeń
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WishlistCreateRequest"
+      responses:
+        201:
+          description: Udało się utworzyć listę życzeń
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WishlistResponse"
+        401:
+          description: Użytkownik niezalogowany
+        400:
+          description: Nieprawidłowe dane wejściowe
+
+  /wishlists/{wishlistId}:
+    get:
+      tags:
+        - wishlist
+      summary: Pobierz szczegóły listy życzeń
+      description: Zwraca szczegóły konkretnej listy życzeń wraz z ofertami
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: wishlistId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Udało się pobrać listę życzeń
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WishlistDetailResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba dostępu do nie swojej listy życzeń
+        404:
+          description: Nie znaleziono listy życzeń
+    patch:
+      tags:
+        - wishlist
+      summary: Zmień nazwę listy życzeń
+      description: Pozwala użytkownikowi zmienić nazwę listy życzeń
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: wishlistId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WishlistUpdateRequest"
+      responses:
+        200:
+          description: Udało się zmienić nazwę listy życzeń
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WishlistResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba modyfikacji nie swojej listy życzeń
+        404:
+          description: Nie znaleziono listy życzeń
+    delete:
+      tags:
+        - wishlist
+      summary: Usuń listę życzeń
+      description: Usuwa listę życzeń użytkownika
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: wishlistId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        204:
+          description: Udało się usunąć listę życzeń
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba usunięcia nie swojej listy życzeń
+        404:
+          description: Nie znaleziono listy życzeń
+
+  /wishlists/{wishlistId}/offers:
+    post:
+      tags:
+        - wishlist
+      summary: Dodaj ofertę do listy życzeń
+      description: Dodaje ofertę do konkretnej listy życzeń
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: wishlistId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WishlistAddOfferRequest"
+      responses:
+        201:
+          description: Udało się dodać ofertę do listy życzeń
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba dodania oferty do nie swojej listy życzeń
+        404:
+          description: Nie znaleziono listy życzeń lub oferty
+        409:
+          description: Oferta już znajduje się na liście życzeń
+
+  /wishlists/{wishlistId}/offers/{offerId}:
+    delete:
+      tags:
+        - wishlist
+      summary: Usuń ofertę z listy życzeń
+      description: Usuwa ofertę z konkretnej listy życzeń
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: wishlistId
+          in: path
+          required: true
+          schema:
+            type: number
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        204:
+          description: Udało się usunąć ofertę z listy życzeń
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba usunięcia oferty z nie swojej listy życzeń
+        404:
+          description: Nie znaleziono listy życzeń lub oferty
+
+  /offers/{offerId}/conversations:
+    get:
+      tags:
+        - offer
+      summary: Pobierz konwersacje dotyczące oferty
+      description: Zwraca wszystkie konwersacje związane z daną ofertą. Tylko dla sprzedawcy.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: offerId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Udało się pobrać konwersacje
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba dostępu do konwersacji nie swojej oferty
+        404:
+          description: Nie znaleziono oferty
+
+  /conversations:
+    post:
+      tags:
+        - conversation
+      summary: Utwórz nową konwersację
+      description: Pozwala kupującemu utworzyć konwersację z sprzedającym dotyczącą oferty
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationCreateRequest"
+      responses:
+        201:
+          description: Udało się utworzyć konwersację
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Sprzedawca nie może utworzyć konwersacji do własnej oferty
+        404:
+          description: Nie znaleziono oferty
+        409:
+          description: Konwersacja dla tej oferty już istnieje
+    get:
+      tags:
+        - conversation
+      summary: Pobierz konwersacje użytkownika
+      description: Zwraca wszystkie konwersacje użytkownika (jako kupujący lub sprzedający)
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Udało się pobrać konwersacje
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ConversationResponse"
+        401:
+          description: Użytkownik niezalogowany
+
+  /conversations/{conversationId}:
+    get:
+      tags:
+        - conversation
+      summary: Pobierz szczegóły konwersacji
+      description: Zwraca szczegóły konwersacji wraz z wiadomościami
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Udało się pobrać konwersację
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationDetailResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba dostępu do nie swojej konwersacji
+        404:
+          description: Nie znaleziono konwersacji
+
+  /conversations/{conversationId}/status:
+    put:
+      tags:
+        - conversation
+      summary: Zmień status konwersacji
+      description: Pozwala sprzedawcy zamknąć lub wznowić konwersację
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConversationStatusRequest"
+      responses:
+        200:
+          description: Udało się zmienić status konwersacji
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Tylko sprzedawca może zmieniać status konwersacji
+        404:
+          description: Nie znaleziono konwersacji
+        409:
+          description: Konwersacja jest już w tym statusie
+
+  /conversations/{conversationId}/messages:
+    post:
+      tags:
+        - message
+      summary: Wyślij wiadomość w konwersacji
+      description: Pozwala wysłać wiadomość w ramach konwersacji
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageCreateRequest"
+      responses:
+        201:
+          description: Udało się wysłać wiadomość
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba wysłania wiadomości do nie swojej konwersacji
+        404:
+          description: Nie znaleziono konwersacji
+        409:
+          description: Konwersacja jest zamknięta
+    get:
+      tags:
+        - message
+      summary: Pobierz wiadomości z konwersacji
+      description: Zwraca wszystkie wiadomości z konwersacji
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Udało się pobrać wiadomości
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MessageResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba dostępu do wiadomości z nie swojej konwersacji
+        404:
+          description: Nie znaleziono konwersacji
+
+  /messages/{messageId}/status:
+    put:
+      tags:
+        - message
+      summary: Zmień status wiadomości
+      description: Pozwala zmienić status wiadomości (odebrana, przeczytana)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageStatusRequest"
+      responses:
+        200:
+          description: Udało się zmienić status wiadomości
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Tylko odbiorca może zmieniać status wiadomości
+        404:
+          description: Nie znaleziono wiadomości
+
+  /messages/{messageId}:
+    delete:
+      tags:
+        - message
+      summary: Usuń wiadomość
+      description: Usuwa wiadomość (zmienia status na DELETED)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: messageId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        204:
+          description: Udało się usunąć wiadomość
+        401:
+          description: Użytkownik niezalogowany
+        403:
+          description: Próba usunięcia nie swojej wiadomości
+        404:
+          description: Nie znaleziono wiadomości
+  
 components:
   schemas:
     PurchaseOfferCreateRequest:
@@ -1132,6 +1581,165 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/CategoryResponse"
+    WishlistCreateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Nazwa listy życzeń
+
+    WishlistUpdateRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: Nowa nazwa listy życzeń
+
+    WishlistResponse:
+      type: object
+      properties:
+        wishlistId:
+          type: number
+        name:
+          type: string
+
+    WishlistDetailResponse:
+      type: object
+      properties:
+        wishlistId:
+          type: number
+        name:
+          type: string
+        offers:
+          type: array
+          items:
+            type: object
+            properties:
+              offerId:
+                type: number
+              offerName:
+                type: string
+              price:
+                type: number
+              imageUrl:
+                type: string
+
+    WishlistAddOfferRequest:
+      type: object
+      required:
+        - offerId
+      properties:
+        offerId:
+          type: number
+
+    ConversationCreateRequest:
+      type: object
+      required:
+        - offerId
+      properties:
+        offerId:
+          type: number
+
+    ConversationStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [OPEN, CLOSED]
+
+    ConversationResponse:
+      type: object
+      properties:
+        conversationId:
+          type: number
+        offerId:
+          type: number
+        offerName:
+          type: string
+        buyerId:
+          type: number
+        buyerName:
+          type: string
+        sellerId:
+          type: number
+        sellerName:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, CLOSED, CLOSED_BY_SYSTEM]
+
+    ConversationDetailResponse:
+      type: object
+      properties:
+        conversationId:
+          type: number
+        offerId:
+          type: number
+        offerName:
+          type: string
+        buyerId:
+          type: number
+        buyerName:
+          type: string
+        sellerId:
+          type: number
+        sellerName:
+          type: string
+        status:
+          type: string
+          enum: [OPEN, CLOSED, CLOSED_BY_SYSTEM]
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/MessageResponse"
+
+    MessageCreateRequest:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+          description: Treść wiadomości
+
+    MessageStatusRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [RECEIVED, READ]
+
+    MessageResponse:
+      type: object
+      properties:
+        messageId:
+          type: number
+        conversationId:
+          type: number
+        senderId:
+          type: number
+        senderName:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [SENT, RECEIVED, READ, DELETED]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
 
   securitySchemes:
     bearerAuth:
