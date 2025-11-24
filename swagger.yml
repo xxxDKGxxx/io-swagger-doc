@@ -21,6 +21,13 @@ tags:
     description: Konwersacje między kupującym a sprzedającym
   - name: message
     description: Wiadomości w konwersacjach
+  - name: payments
+    description: Płatności
+  - name: search-histories
+    description: Historia wyszukiwania
+  - name: deliveries
+    description: dostawy
+
 paths:
   /categories:
     get:
@@ -1243,7 +1250,270 @@ paths:
           description: Próba usunięcia nie swojej wiadomości
         404:
           description: Nie znaleziono wiadomości
-  
+
+  /payments:
+    get:
+      summary: Pobranie listy płatności użytkownika
+      tags:
+        - payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDING, COMPLETED, FAILED, REFUNDED]
+      responses:
+        "200":
+          description: Lista płatności
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedPaymentListResponse"
+
+  /payments/{orderId}:
+    post:
+      summary: Utworzenie płatności
+      tags:
+        - payments
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderId
+                - paymentProvider
+              properties:
+                orderId:
+                  type: integer
+                paymentMethod:
+                  type: string
+                  enum: [STRIPE, PAYU, PRZELEWY24, BLUESNAP]
+      responses:
+        "201":
+          description: Płatność utworzona
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "400":
+          description: Niepoprawne dane płatności
+        "404":
+          description: Zamówienia nie znaleziono
+
+  /payments/{paymentId}:
+    get:
+      summary: Szczegóły pojedynczej płatności
+      tags:
+        - payments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Szczegóły płatności
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentResponse"
+        "404":
+          description: Płatności nie znaleziono
+
+  /search-histories:
+    get:
+      summary: Historia wyszukiwań bieżącego użytkownika
+      tags:
+        - search-histories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: entriesAmount
+          in: path
+          required: false
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Lista ostatnich wyszukiwań
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SearchHistoryItem"
+
+    post:
+      summary: Zapisanie nowego wyszukiwania
+      tags:
+        - search-histories
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSearchHistoryRequest"
+      responses:
+        "201":
+          description: Wyszukiwanie zapisane
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchHistoryItem"
+
+    delete:
+      summary: Wyczyszczenie całej historii wyszukiwań użytkownika
+      tags:
+        - search-histories
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Historia wyczyszczona
+
+  /search-histories/{id}:
+    delete:
+      summary: Usunięcie pojedynczego wpisu z historii
+      tags:
+        - search-histories
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204":
+          description: Wpis usunięty
+
+  /deliveries:
+    get:
+      summary: Lista dostaw użytkownika (jako kupujący lub sprzedający)
+      tags:
+        - deliveries
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: role
+          schema:
+            type: string
+            enum: [BUYER, SELLER]
+            default: BUYER
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [PENDING, SHIPPED, IN_TRANSIT, DELIVERED, RETURNED, CANCELLED]
+      responses:
+        "200":
+          description: Lista dostaw
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedDeliveryListResponse"
+
+  /deliveries/{deliveryId}:
+    get:
+      summary: Szczegóły dostawy
+      tags:
+        - deliveries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Szczegóły dostawy + numer trackingowy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
+
+  /deliveries/methods:
+  get:
+    summary: Pobierz dostępne metody dostawy
+    tags:
+      - deliveries
+    responses:
+      "200":
+        description: Dostępne metody dostawy
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/DeliveryMethodDto"
+
+  /deliveries/{deliveryId}/tracking:
+    get:
+      summary: Śledzenie przesyłki
+      tags:
+        - deliveries
+      parameters:
+        - in: path
+          name: deliveryId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+        description: Informacje o przesyłce
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeliveryResponse"
+        "404":
+          description: Zamówienia nie znaleziono
+
+    patch:
+      summary: Aktualizacja numeru trackingowego (tylko sprzedawca)
+      tags:
+        - deliveries
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deliveryId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [trackingNumber, courier]
+              properties:
+                trackingNumber:
+                  type: string
+                  example: "123456789PL"
+                courier:
+                  type: string
+                  enum:
+                    [INPOST, DPD, DHL, POCZTA_POLSKA, UPS, FEDEX, GLS, OTHER]
+      responses:
+        "200":
+          description: Numer trackingowy zaktualizowany
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
+
 components:
   schemas:
     PurchaseOfferCreateRequest:
@@ -1797,6 +2067,124 @@ components:
           type: string
           format: date-time
 
+    PaymentResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        orderId: { type: string, format: uuid }
+        amount: { type: number, format: double }
+        currency: { type: string, example: "PLN" }
+        status: { type: string, enum: [PENDING, COMPLETED, FAILED, REFUNDED] }
+        provider: { type: string, enum: [STRIPE, PAYU, PRZELEWY24, BLUESNAP] }
+        providerPaymentId: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+
+    PaginatedPaymentListResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/PaymentResponse"
+
+    SearchHistoryItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        query: { type: string, example: "iphone 14 pro" }
+        filters:
+          type: object
+          nullable: true
+          description: Zachowane filtry (cena, kategoria, lokalizacja itp.)
+        createdAt: { type: string, format: date-time }
+
+    CreateSearchHistoryRequest:
+      type: object
+      required: [query]
+      properties:
+        query:
+          type: string
+          maxLength: 255
+        filters:
+          type: object
+          nullable: true
+
+    PaginatedResponse:
+      type: object
+      required:
+        - page
+        - pageSize
+        - totalElements
+        - totalPages
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        pageSize:
+          type: integer
+          minimum: 1
+          maximum: 100
+          example: 20
+        totalElements:
+          type: integer
+          example: 157
+        totalPages:
+          type: integer
+          example: 8
+
+    DeliveryResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        orderId: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [PENDING, SHIPPED, IN_TRANSIT, DELIVERED, RETURNED, CANCELLED]
+        trackingNumber: { type: string, nullable: true }
+        courier:
+          type: string
+          enum: [INPOST, DPD, DHL, POCZTA_POLSKA, UPS, FEDEX, GLS, OTHER, NONE]
+          nullable: true
+        shippedAt: { type: string, format: date-time, nullable: true }
+        deliveredAt: { type: string, format: date-time, nullable: true }
+        address:
+          type: string
+        sellerId:
+          type: number
+        buyerId:
+          type: number
+
+    PaginatedDeliveryListResponse:
+      allOf:
+        - $ref: "#/components/schemas/PaginatedResponse"
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: "#/components/schemas/DeliveryResponse"
+
+    DeliveryMethodDto:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        estimatedMinDays:
+          type: integer
+        estimatedMaxDays:
+          type: integer
+        supportedLocations:
+          type: array
+          items:
+            type: string
 
   securitySchemes:
     bearerAuth:
