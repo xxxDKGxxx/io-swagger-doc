@@ -27,6 +27,12 @@ tags:
     description: Historia wyszukiwania
   - name: deliveries
     description: dostawy
+  - name: reviews
+    description: Zarządzanie opiniami i ocenami użytkowników
+  - name: bans
+    description: Zarządzanie banicjami
+  - name: appeals
+    description: Zarządzanie odwołaniami od blokad 
 
 paths:
   /categories:
@@ -1513,6 +1519,425 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DeliveryResponse"
+      
+  /reviews/{userId}:
+    post:
+      tags:
+        - reviews
+      summary: Dodaj nową opinię
+      description: Pozwala zalogowanemu użytkownikowi dodać opinię o innym użytkowniku.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: UserId
+          in: path
+          description: ID użytkownika, któremu chcemy wystawić opinie
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReviewRequest'
+      responses:
+        201:
+          description: Opinia została dodana pomyślnie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        400:
+          description: Błędne dane
+        401:
+          description: Użytkownik niezalogowany
+        403 :
+          description: Brak kupionego zamówienia 
+        404:
+          description: Nie znaleziono użytkownika
+        422:
+          description: Wykryto naruszenie polityki komunikacji
+    get:
+      tags:
+        - reviews
+      summary: Pobierz listę opinii
+      description: Pobiera opinie wystawione dla konkretnego użytkownika.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: UserId
+          in: path
+          description: ID użytkownika, którego opinie chcemy zobaczyć
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Lista opinii
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Review'
+        401:
+          description: Użytkownik niezalogowany
+        404:
+          description: Nie znaleziono użytkownika
+
+  /reviews/{reviewId}:
+    patch:
+      tags:
+        - reviews
+      summary: Modyfikuje istniejącą opinię
+      description: Pozwala zalogowanemu użytkownikowi zmodyfikować istniejącą opinię.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reviewId
+          in: path
+          description: ID opini, którą chcemy zmodyfikować
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyReviewRequest'
+      responses:
+        201:
+          description: Opinia została pomyślnie zmodyfikowana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        400:
+          description: Błędne dane (np. ocena spoza skali, brak ID ogłoszenia)
+        401:
+          description: Użytkownik nie jest właścicielem opinii
+        404 :
+          description: Brak opini to tym id
+        422:
+          description: Wykryto naruszenie polityki komunikacji
+
+  /reviews/{userId}/reputation:
+    get:
+      tags:
+        - reviews
+      summary: Pobierz podsumowanie reputacji użytkownika
+      description: Zwraca średnią ocenę oraz liczbę wystawionych opinii.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Statystyki reputacji
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReputationSummary'
+        401:
+          description: Użytkownik niezalogowany
+        404:
+          description: Nie znaleziono użytkownika
+
+  /bans:
+    post:
+      tags: 
+        - bans
+      summary: Nałóż blokadę na użytkownika
+      description: Wymaga tokena z rolą admina
+      security:
+          - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBanRequest'
+      responses:
+        201:
+          description: Blokada pomyślnie nałożona
+        401:
+          description: Brak roli admina
+
+    get:
+      tags:
+        - bans
+      summary: Pobierz listę blokad
+      description: Zwraca listę blokad nałożonych na użytkowników.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          description: ID użytkownika, którego blokady chcemy wyświetlić.
+          required: false
+          schema:
+            type: number
+        - name: status
+          in: query
+          description: Status blokady.
+          required: false
+          schema:
+            type: string
+            enum: [active, expired, revoked, all]
+            default: active
+        - name: date
+          in: query
+          description: dzień nałożenia
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: Lista blokad
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Ban'
+        401:
+          description: Brak roli admina
+
+  /bans/{banId}:
+    get:
+      tags: 
+        - bans
+      summary: Zwróć szczegóły konkretnej blokady
+      description: Wymaga tokena z rolą admina
+      security:
+          - bearerAuth: []
+      parameters:
+        - name: BanId
+          in: path
+          description: ID bana, którego chcemy zobaczyć
+          required: true
+          schema:
+            type: number
+      responses:
+        200:
+          description: Ban został znaleziony
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ban'
+        401:
+          description: Brak roli admina
+        404:
+          description: Nie znaleziono bana
+
+    patch:
+      tags:
+        - bans
+      summary: Modyfikuj blokade
+      description: Wymaga tokena z rolą admina
+      security:
+          - bearerAuth: []
+      parameters:
+        - name: BanId
+          in: path
+          description: ID bana, którego chcemy edytować
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyBanRequest'
+      responses:
+        201:
+          description: Blokada została pomyślnie zmodyfikowana
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ban'
+        400:
+          description: Błędne dane
+        401:
+          description: Brak roli admina
+        404 :
+          description: Brak bana o tym id
+
+    delete:
+        tags:
+          - bans
+        summary: Usuń blokade
+        security:
+          - bearerAuth: []
+        parameters:
+          - name: BanId
+            in: path
+            required: true
+            schema:
+              type: number
+        responses:
+          204:
+            description: Blokada pomyślnie usunięta
+          401:
+            description: Brak roli admina
+          404:
+            description: Blokada nie istnieje
+
+  /appeals:
+    post:
+      tags:
+        - appeals
+      summary: Złóż odwołanie od blokady(dla usera)
+      security:
+        - bearerAuth: []
+      requestBody: 
+        required: true
+        content: 
+          application/json: 
+            schema: 
+              $ref: '#/components/schemas/CreateAppealRequest'
+      responses: 
+        201: 
+          description: Odwołanie przyjęte do rozpatrzenia.
+        401:
+          description: Użytkownik niezalogowany
+
+    get:
+      tags:
+        - appeals
+      summary: Pobierz listę odwołań
+      description: Zwraca listę odwołań od blokad.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: query
+          description: ID użytkownika, którego odwołania chcemy wyświetlić.
+          required: false
+          schema:
+            type: number
+        - name: status
+          in: query
+          description: Status blokady.
+          required: false
+          schema:
+            type: string
+            enum: [Approved, Rejected, Pending]
+            default: Pending
+        - name: date
+          in: query
+          description: dzień nałożenia
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: Lista odwołań
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Appeal'
+        401:
+          description: Brak roli admina
+
+  /appeals/{appealId}:
+    get:
+      tags: 
+        - appeals
+      summary: Pobierz szczegóły pojedynczego odwołania
+      security: 
+        bearerAuth: []
+      parameters:
+        - name: AppealId
+          in: path
+          required: true
+          schema: 
+            type: number
+      responses:
+        200:
+          description: Appeal został znaleziony
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appeal'
+        401:
+          description: Brak odpowiedniej roli
+        404:
+            description: Appeal nie istnieje
+
+    patch:
+      tags:
+        - appeals
+      summary: Modyfikuj odwołanie do blokady
+      description: Wymaga tokena z rolą admina
+      security:
+          - bearerAuth: []
+      parameters:
+        - name: AppealId
+          in: path
+          description: ID appeala, którego chcemy edytować
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyAppealRequest'
+      responses:
+        201:
+          description: Odwołanie zostało pomyślnie zmodyfikowane
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Appeal'
+        400:
+          description: Błędne dane
+        401:
+          description: Brak roli admina
+        404 :
+          description: Brak appeala o tym id
+
+    delete:
+        tags:
+          - appeals
+        summary: Usuń appeala
+        security:
+          - bearerAuth: []
+        parameters:
+          - name: AppealId
+            in: path
+            required: true
+            schema:
+              type: number
+        responses:
+          204:
+            description: Appeal pomyślnie usunięta
+          401:
+            description: Brak roli admina
+          404:
+            description: Appeal nie istnieje
 
 components:
   schemas:
@@ -2185,6 +2610,246 @@ components:
           type: array
           items:
             type: string
+
+    CreateReviewRequest:
+      type: object
+      required:
+        - buyerId
+        - rating
+      properties:
+        buyerId:
+          type: number
+          description: ID użytkownika, który oceniał (kupujący)
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Ocena w skali 1-5
+          example: 4
+        comment:
+          type: string
+          description: Treść opinii (opcjonalna)
+          example: "Towar zgodny z opisem. Polecam."
+
+    ModifyReviewRequest:
+      type: object
+      properties:
+        reviewId:
+          type: number
+          description: ID opini
+        buyerId:
+          type: number
+          description: ID wystawiającego opinie
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+          description: Ocena w skali 1-5
+          example: 4
+        comment:
+          type: string
+          description: Treść opinii (opcjonalna)
+          example: "Towar zgodny z opisem. Polecam."
+
+    Review:
+      type: object
+      properties:
+        id:
+          type: number
+        authorId:
+          type: number
+          description: ID autora opinii
+        authorName:
+          type: string
+          description: Imię autora (do wyświetlenia na liście)
+          example: "Jan K."
+        targetUserId:
+          type: number
+        rating:
+          type: integer
+          example: 4
+        comment:
+          type: string
+          example: "Wszystko super."
+        createdAt:
+          type: string
+          format: date-time
+
+    ReputationSummary:
+      type: object
+      properties:
+        userId:
+          type: number
+        averageRating:
+          type: number
+          format: float
+          description: Średnia ocena (np. 4.8)
+          example: 4.8
+        totalReviews:
+          type: integer
+          description: Łączna liczba opinii
+          example: 152
+        distribution:
+          type: object
+          description: Rozkład ocen (ile piątek, ile czwórek itd.)
+          properties:
+            5_stars:
+              type: integer
+              example: 140
+            4_stars:
+              type: integer
+            3_stars:
+              type: integer
+              example: 12
+            2_stars:
+              type: integer
+            1_stars:
+              type: integer
+
+    CreateBanRequest:
+      type: object
+      description: Dane wymagane do nałożenia nowej blokady na użytkownika.
+      required:
+        - userId
+        - reason
+        - adminId
+      properties:
+        userId:
+          type: number
+          description: ID użytkownika, który ma zostać zablokowany.
+          example: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+        adminId:
+          type: number
+          description: ID moderatora nakładającego blokadę.
+          example: "00a11b22-c3d4-55e6-77f8-9900aabbccdd"
+        reason:
+          type: string
+          description: Powód blokady
+          example: "Wulgarny język"
+        expirationDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data, po której blokada wygaśnie. NULL oznacza blokadę stałą.
+          example: "2026-06-01T00:00:00Z"
+
+    Ban:
+      type: object
+      description: Pełna reprezentacja pojedynczej blokady nałożonej na użytkownika.
+      properties:
+        banId:
+          type: number
+          description: Unikalny identyfikator blokady.
+        userId:
+          type: number
+        adminId:
+          type: number
+        reason:
+          type: string
+        issueDate:
+          type: string
+          format: date-time
+          description: Data i czas nałożenia blokady.
+          example: "2025-11-24T15:00:00Z"
+        expirationDate:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+          description: Czy blokada jest obecnie aktywna.
+          example: true
+    
+    ModifyBanRequest:
+      type: object
+      description: Dane wymagane do edycji blokady na użytkownika.
+      required:
+        - adminId
+      properties:
+        adminId:
+          type: number
+          description: ID moderatora modyfikującego blokadę.
+          example: "00a11b22-c3d4-55e6-77f8-9900aabbccdd"
+        reason:
+          type: string
+          description: Powód blokady
+          example: "Wulgarny język"
+        expirationDate:
+          type: string
+          format: date-time
+          nullable: true
+          description: Data, po której blokada wygaśnie. NULL oznacza blokadę stałą.
+          example: "2026-06-01T00:00:00Z"
+
+    CreateAppealRequest:
+      type: object
+      description: Dane wymagane do złożenia apepeala.
+      required:
+        - banId
+        - justification
+      properties:
+        banId:
+          type: number
+          description: ID konkretnej blokady, od której użytkownik się odwołuje.
+          example: "00a11b22-c3d4-55e6-77f8-9900aabbccdd"
+        justification:
+          type: string
+          description: Szczegółowe uzasadnienie, dlaczego blokada powinna zostać zdjęta.
+          example: "Wystawiłem to ogłoszenie przez pomyłkę, natychmiast je usunąłem po zorientowaniu się w błędzie."
+
+    Appeal:
+      type: object
+      description: Pełna reprezentacja odwołania.
+      properties:
+        appealId:
+          type: number
+          example: 101
+        userId:
+          type: number
+          example: 502
+        banId:
+          type: number
+          example: 102
+        justification:
+          type: string
+          example: "Blokada została nałożona niesłusznie. Ogłoszenie dotyczyło roweru, nie jest to przedmiot zakazany. Proszę o weryfikację."
+        status:
+          type: string
+          enum: [Approved, Rejected, Pending]
+          example: Pending
+        issueDate:
+          type: string
+          format: date-time
+          description: Data złożenia odwołania.
+          example: "2026-06-01T00:00:00Z"
+        adminId:
+          type: number
+          nullable: true
+          description: ID administratora, który rozpatrzył odwołanie.
+          example: null
+        decisionReason:
+          type: string
+          nullable: true
+          description: Uzasadnienie decyzji administratora.
+          example: null
+
+    ModifyAppealRequest:
+      type: object
+      description: Dane wymagane do edycji apepeala.
+      required:
+        - adminId
+      properties:
+        adminId:
+          type: number
+          description: ID moderatora edytującego blokadę.
+          example: "00a11b22-c3d4-55e6-77f8-9900aabbccdd"
+        decisionReason:
+          type: string
+          example: "bo tak"
+        status:
+          type: string
+          enum: [Approved, Rejected, Pending]
+          example: Rejected
 
   securitySchemes:
     bearerAuth:
