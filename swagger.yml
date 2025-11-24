@@ -1344,7 +1344,7 @@ paths:
       parameters:
         - name: entriesAmount
           in: path
-          required: false
+          required: true
           schema:
             type: number
       responses:
@@ -1451,19 +1451,19 @@ paths:
                 $ref: "#/components/schemas/DeliveryResponse"
 
   /deliveries/methods:
-  get:
-    summary: Pobierz dostępne metody dostawy
-    tags:
-      - deliveries
-    responses:
-      "200":
-        description: Dostępne metody dostawy
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: "#/components/schemas/DeliveryMethodDto"
+    get:
+      summary: Pobierz dostępne metody dostawy
+      tags:
+        - deliveries
+      responses:
+        "200":
+          description: Dostępne metody dostawy
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                    $ref: "#/components/schemas/DeliveryMethodDto"
 
   /deliveries/{deliveryId}/tracking:
     get:
@@ -1478,11 +1478,11 @@ paths:
             type: string
       responses:
         "200":
-        description: Informacje o przesyłce
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DeliveryResponse"
+          description: Informacje o przesyłce
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryResponse"
         "404":
           description: Zamówienia nie znaleziono
 
