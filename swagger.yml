@@ -664,19 +664,19 @@ paths:
         "409":
           description: "Wprowadzono niepoprawne dane logowania"
   /users/email/verify:
-    post:
+    get:
       tags:
         - user
       summary: Zweryfikuj email użytkownika
       description: Dokonuje walidacji wprowadzonego emaila przez użytkownika.
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UserEmailVerifyRequest"
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: number
       responses:
         "204":
           description: "Pomyślnie zweryfikowano email użytkownika"
@@ -685,19 +685,19 @@ paths:
         "409":
           description: "Wprowadzono niepoprawny email"
   /users/password/verify:
-    post:
+    get:
       tags:
         - user
       summary: Zweryfikuj hasło użytkownika
       description: Dokonuje walidacji wprowadzonego hasła przez użytkownika.
       security:
         - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/UserPasswordVerifyRequest"
+      parameters:
+        - name: password
+          in: query
+          required: true
+          schema:
+            type: number
       responses:
         "204":
           description: "Pomyślnie zweryfikowano hasło użytkownika"
