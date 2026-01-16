@@ -1474,6 +1474,8 @@ paths:
       summary: Śledzenie przesyłki
       tags:
         - deliveries
+      security:
+        - bearerAuth: []
       parameters:
         - in: path
           name: deliveryId
